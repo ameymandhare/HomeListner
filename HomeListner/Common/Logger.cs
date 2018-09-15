@@ -7,18 +7,26 @@ using Windows.Storage;
 
 namespace HomeListner.Common
 {
-    internal static class Logger
+    public enum LogType
     {
-        private static StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
+        Information,
+        Error,
+        Warning,
+        Debug
+    }
+
+    public static class FileLogger
+    {
         private static StorageFile sampleFile = null;
+        private static readonly StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
 
-        public static async void LogToFile(string Message)
+        public async static void Log(LogType logType, string msg)
         {
+            // Create sample file; replace if exists.
             sampleFile = await storageFolder.CreateFileAsync("sampleLog.txt", CreationCollisionOption.OpenIfExists);
-
-            await FileIO.WriteTextAsync(sampleFile, "FileLocation:" + storageFolder.Path.ToString() + "\t" + "TimeStamp: " + DateTime.Now.ToString()+ "\r\n");
-            await FileIO.WriteLinesAsync(sampleFile, new string[] { "\r\n" });
-
+            await FileIO.AppendTextAsync(sampleFile, Environment.NewLine + "======================= " + logType.ToString() + " ======================= ");
+            await FileIO.AppendTextAsync(sampleFile, Environment.NewLine + Environment.NewLine + msg + Environment.NewLine + "TimeStamp: " + DateTime.Now.ToString());
+            await FileIO.AppendTextAsync(sampleFile, Environment.NewLine + "======================= Log End =======================");
         }
     }
 }

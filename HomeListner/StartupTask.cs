@@ -1,16 +1,22 @@
-﻿using HomeListner.Entity;
+﻿using HomeListner.Common;
+using HomeListner.Entity;
 using Newtonsoft.Json;
 using Restup.Webserver.Http;
 using Restup.Webserver.Rest;
+using Serilog;
 using System;
-using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.NetworkInformation;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Windows.ApplicationModel.Background;
-using Serilog;
+using Windows.Data.Json;
 using Windows.Storage;
-using HomeListner.Common;
 
 // The Background Application template is documented at http://go.microsoft.com/fwlink/?LinkID=533884&clcid=0x409
 
@@ -24,8 +30,7 @@ namespace HomeListner
 
         private BackgroundTaskDeferral _deferral;
 
-        private StorageFile sampleFile = null;
-        private StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
+
 
         /// <remarks>
         /// If you start any asynchronous methods here, prevent the task
@@ -36,10 +41,6 @@ namespace HomeListner
         {
             try
             {
-                // Create sample file; replace if exists.
-
-                sampleFile = await storageFolder.CreateFileAsync("sampleLog.txt", CreationCollisionOption.OpenIfExists);
-
                 // This deferral should have an instance reference, if it doesn't... the GC will
                 // come some day, see that this method is not active anymore and the local variable
                 // should be removed. Which results in the application being closed.
@@ -47,12 +48,6 @@ namespace HomeListner
                 var restRouteHandler = new RestRouteHandler();
 
                 restRouteHandler.RegisterController<ParameterController>();
-                //restRouteHandler.RegisterController<FromContentControllerSample>();
-                //restRouteHandler.RegisterController<PerCallControllerSample>();
-                //restRouteHandler.RegisterController<SimpleParameterControllerSample>();
-                //restRouteHandler.RegisterController<SingletonControllerSample>();
-                //restRouteHandler.RegisterController<ThrowExceptionControllerSample>();
-                //restRouteHandler.RegisterController<WithResponseContentControllerSample>();
 
                 var configuration = new HttpServerConfiguration()
                     .ListenOnPort(8800)
@@ -66,47 +61,38 @@ namespace HomeListner
 
                 await httpServer.StartServerAsync();
 
-                await FileIO.WriteTextAsync(sampleFile, "\n\n\n"+"FileLocation:" + storageFolder.Path.ToString() +"\n"+"TimeStamp: "+DateTime.Now.ToString());
+
                 //var startTimeSpan = TimeSpan.Zero;
                 //var periodTimeSpan = TimeSpan.FromMinutes(1);
-
-                //var timer = new System.Threading.Timer((e) =>
-                //{
-                UpdateIpAsync();
-                //}, null, startTimeSpan, periodTimeSpan);
+                var stateTimer = new Timer(UpdateIpAsync,
+                                   null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
 
                 // Dont release deferral, otherwise app will stop
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Something went wrong");
+                FileLogger.Log(Common.LogType.Error, ex.Message);
             }
         }
 
-        private async void UpdateIpAsync()
+        private async void UpdateIpAsync(object state)
         {
-
+            //FileLogger.Log(Common.LogType.Information, "1");
             var publicIp = await new HttpClient().GetStringAsync("https://api.ipify.org/");
-            //var firstMacAddress = NetworkInterface
-            //                         .GetAllNetworkInterfaces()
-            //                         .Where(nic => nic.OperationalStatus == OperationalStatus.Up && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-            //                         .Select(nic => nic.GetPhysicalAddress().ToString())
-            //                         .FirstOrDefault();
-
-            var macId = "b8:27:eb:1e:8b:51";
-
-            await FileIO.WriteTextAsync(sampleFile, "\n\n\n" + "IP and MacID:" + publicIp + "/"+ macId + "\n" + "TimeStamp: " + DateTime.Now.ToString());
-
+            //FileLogger.Log(Common.LogType.Information, "2");
             var device = new Device();
-            device.MacId = macId;
+            //FileLogger.Log(Common.LogType.Information, "3");
+            device.MacId = await GetMAC();
             device.IPAddress = publicIp;
+            //FileLogger.Log(Common.LogType.Information, "4");
+            FileLogger.Log(Common.LogType.Information, "IP and MacID:" + publicIp + " / " + device.MacId);
 
             // Update port # in the following line.
             client.BaseAddress = new Uri("http://kosustestsite.somee.com/");
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
-
+            //FileLogger.Log(Common.LogType.Information, "5");
             try
             {
                 // Update the device Ip
@@ -116,15 +102,73 @@ namespace HomeListner
                 HttpResponseMessage response = await client.PostAsync(
                     $"api/Admin/UpdatePublicIp", stringContent);
                 response.EnsureSuccessStatusCode();
-
+                //FileLogger.Log(Common.LogType.Information, "6");
                 // Deserialize the updated product from the response body.
                 var result = await response.Content.ReadAsStringAsync();
+                //FileLogger.Log(Common.LogType.Information, "7");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Log(Common.LogType.Error, "UpdateIpAsync " + ex.Message);
+            }
+        }
 
+        private async Task<String> GetMAC()
+        {
+            String MAC = null;
+            StreamReader SR = await GetJsonStreamData("http://localhost:8080/api/networking/ipconfig");
+            JsonObject ResultData = null;
+            try
+            {
+                String JSONData;
+
+                JSONData = SR.ReadToEnd();
+
+                ResultData = (JsonObject)JsonObject.Parse(JSONData);
+                JsonArray Adapters = ResultData.GetNamedArray("Adapters");
+
+                //foreach (JsonObject Adapter in Adapters)   
+                for (uint index = 0; index < Adapters.Count; index++)
+                {
+                    JsonObject Adapter = Adapters.GetObjectAt(index).GetObject();
+                    String Type = Adapter.GetNamedString("Type");
+                    if (Type.ToLower().CompareTo("ethernet") == 0)
+                    {
+                        MAC = ((JsonObject)Adapter).GetNamedString("HardwareAddress");
+                        break;
+                    }
+                }
+            }
+            catch (Exception E)
+            {
+                System.Diagnostics.Debug.WriteLine(E.Message);
+            }
+
+            return MAC;
+        }
+
+        private async Task<StreamReader> GetJsonStreamData(String URL)
+        {
+            HttpWebRequest wrGETURL = null;
+            Stream objStream = null;
+            StreamReader objReader = null;
+
+            try
+            {
+                wrGETURL = (HttpWebRequest)WebRequest.Create(URL);
+                wrGETURL.Credentials = new NetworkCredential("Administrator", "123");
+                HttpWebResponse Response = (HttpWebResponse)(await wrGETURL.GetResponseAsync());
+                if (Response.StatusCode == HttpStatusCode.OK)
+                {
+                    objStream = Response.GetResponseStream();
+                    objReader = new StreamReader(objStream);
+                }
             }
             catch (Exception e)
             {
-                Log.Error(e, "Something went wrong");
+                System.Diagnostics.Debug.WriteLine("GetData " + e.Message);
             }
+            return objReader;
         }
     }
 }
