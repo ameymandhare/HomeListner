@@ -1,4 +1,5 @@
 ﻿using HomeListner.Common;
+using HomeListner.DBEntity;
 using HomeListner.Entity;
 using Newtonsoft.Json;
 using Restup.Webserver.Http;
@@ -71,7 +72,7 @@ namespace HomeListner
             }
             catch (Exception ex)
             {
-                FileLogger.Log(Common.LogType.Error, ex.Message);
+                FileLogger.Log(LogType.Error, ex.Message);
             }
         }
 
@@ -85,7 +86,7 @@ namespace HomeListner
             device.MacId = await GetMAC();
             device.IPAddress = publicIp;
             //FileLogger.Log(Common.LogType.Information, "4");
-            FileLogger.Log(Common.LogType.Information, "IP and MacID:" + publicIp + " / " + device.MacId);
+            FileLogger.Log(LogType.Information, "IP and MacID:" + publicIp + " / " + device.MacId);
 
             // Update port # in the following line.
             client.BaseAddress = new Uri("http://kosustestsite.somee.com/");
@@ -109,7 +110,7 @@ namespace HomeListner
             }
             catch (Exception ex)
             {
-                FileLogger.Log(Common.LogType.Error, "UpdateIpAsync " + ex.Message);
+                FileLogger.Log(LogType.Error, "UpdateIpAsync " + ex.Message);
             }
         }
 
