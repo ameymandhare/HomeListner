@@ -1,4 +1,4 @@
-﻿namespace HomeListner
+﻿namespace HomeListner.Entity
 {
     internal class SampleData
     {

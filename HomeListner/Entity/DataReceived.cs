@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace HomeListner
+namespace HomeListner.Entity
 {
     public sealed class DataReceived
     {

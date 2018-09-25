@@ -1,23 +1,20 @@
 ﻿using HomeListner.Common;
+using HomeListner.Controller;
 using HomeListner.DBEntity;
 using HomeListner.Entity;
 using Newtonsoft.Json;
 using Restup.Webserver.Http;
 using Restup.Webserver.Rest;
-using Serilog;
 using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.Background;
 using Windows.Data.Json;
-using Windows.Storage;
 
 // The Background Application template is documented at http://go.microsoft.com/fwlink/?LinkID=533884&clcid=0x409
 
@@ -42,6 +39,10 @@ namespace HomeListner
         {
             try
             {
+                //We need to create database tables to run application
+                SQLiteDBHelper.CreateDatabase();
+
+                DBLogger.Log(LogType.Information, "Application started");
                 // This deferral should have an instance reference, if it doesn't... the GC will
                 // come some day, see that this method is not active anymore and the local variable
                 // should be removed. Which results in the application being closed.
@@ -62,6 +63,7 @@ namespace HomeListner
 
                 await httpServer.StartServerAsync();
 
+                DBLogger.Log(LogType.Information, "ServerStarted");
 
                 //var startTimeSpan = TimeSpan.Zero;
                 //var periodTimeSpan = TimeSpan.FromMinutes(1);

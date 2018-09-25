@@ -17,27 +17,22 @@ namespace HomeListner.Common
         {
             // Create sample file; replace if exists.
             sampleFile = await storageFolder.CreateFileAsync("sampleLog.txt", CreationCollisionOption.OpenIfExists);
-            await FileIO.AppendTextAsync(sampleFile, Environment.NewLine + "======================= " + logType.ToString() + " ======================= ");
-            await FileIO.AppendTextAsync(sampleFile, Environment.NewLine + Environment.NewLine + msg + Environment.NewLine + "TimeStamp: " + DateTime.Now.ToString());
-            await FileIO.AppendTextAsync(sampleFile, Environment.NewLine + "======================= Log End =======================");
+            await FileIO.AppendTextAsync(sampleFile, Environment.NewLine + "======================= " + logType.ToString() + " ======================= "
+                                        + Environment.NewLine + Environment.NewLine + msg + Environment.NewLine + "TimeStamp: " + DateTime.Now.ToString()
+                                        + Environment.NewLine + "======================= Log End ======================="
+                                        + Environment.NewLine);
         }
     }
 
-    public sealed class DBLogger
+    public static class DBLogger
     {
-        private SQLiteDBHelper dbHelper;
-
-        public DBLogger()
+        public static void Log(LogType logType, string msg)
         {
-            dbHelper = new SQLiteDBHelper();
-        }
-
-        public void Log(LogType logType, string msg)
-        {
-            var s = dbHelper.Connection.Insert(new Log()
+            var isInserted = SQLiteDBHelper.InsertIntoTable(new Log()
             {
                 Type = logType.ToString(),
-                Message = msg
+                Message = msg,
+                Timestamp = DateTime.Now.ToString()
             });
         }
     }
