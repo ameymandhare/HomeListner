@@ -91,7 +91,7 @@ namespace HomeListner
             FileLogger.Log(LogType.Information, "IP and MacID:" + publicIp + " / " + device.MacId);
 
             // Update port # in the following line.
-            client.BaseAddress = new Uri("http://kosustestsite.somee.com/");
+            client.BaseAddress = new Uri("http://ajaytestingsite.somee.com/");
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
