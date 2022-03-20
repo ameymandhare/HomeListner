@@ -13,10 +13,11 @@ namespace HomeListner.Common
         private static StorageFile sampleFile = null;
         private static readonly StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
 
+
         public async static void Log(LogType logType, string msg)
         {
             // Create sample file; replace if exists.
-            sampleFile = await storageFolder.CreateFileAsync("sampleLog.txt", CreationCollisionOption.OpenIfExists);
+            sampleFile = await storageFolder.CreateFileAsync("AppLogs.txt", CreationCollisionOption.OpenIfExists);
             await FileIO.AppendTextAsync(sampleFile, Environment.NewLine + "======================= " + logType.ToString() + " ======================= "
                                         + Environment.NewLine + Environment.NewLine + msg + Environment.NewLine + "TimeStamp: " + DateTime.Now.ToString()
                                         + Environment.NewLine + "======================= Log End ======================="

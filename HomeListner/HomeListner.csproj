@@ -97,6 +97,7 @@
   <ItemGroup>
     <Compile Include="BLL\AdminService.cs" />
     <Compile Include="Common\Logger.cs" />
+    <Compile Include="Common\Utility.cs" />
     <Compile Include="DAL\AdminDataAcess.cs" />
     <Compile Include="Entity\DataReceived.cs" />
     <Compile Include="DBEntity\Log.cs" />
@@ -106,6 +107,7 @@
     <Compile Include="Entity\SampleData.cs" />
     <Compile Include="StartupTask.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UpdateIPTask.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">
@@ -114,6 +116,9 @@
     <None Include="HomeListner_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="AppLogs.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Properties\Default.rd.xml" />
     <Content Include="Assets\LockScreenLogo.scale-200.png">
       <InProject>false</InProject>
@@ -152,11 +157,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup />
-  <ItemGroup>
-    <SDKReference Include="SQLite.UWP.2015, Version=3.25.3">
-      <Name>SQLite for Universal Windows Platform %28SQLite.UWP.2015, Version=3.25.3%29</Name>
-    </SDKReference>
-  </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '15.0' ">
     <VisualStudioVersion>15.0</VisualStudioVersion>
   </PropertyGroup>

@@ -7,6 +7,7 @@ using Restup.Webserver.Http;
 using Restup.Webserver.Rest;
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -23,10 +24,9 @@ namespace HomeListner
     public sealed class StartupTask : IBackgroundTask
     {
         private static HttpClient client = new HttpClient();
-
         private HttpServer _httpServer;
-
         private BackgroundTaskDeferral _deferral;
+        private string _myRaspberryMacAddress;
 
 
 
@@ -40,12 +40,17 @@ namespace HomeListner
             try
             {
                 //We need to create database tables to run application
-                SQLiteDBHelper.CreateDatabase();
+                //SQLiteDBHelper.CreateDatabase();
 
-                DBLogger.Log(LogType.Information, "Application started");
+                //DBLogger.Log(LogType.Information, "Application started");
                 // This deferral should have an instance reference, if it doesn't... the GC will
                 // come some day, see that this method is not active anymore and the local variable
                 // should be removed. Which results in the application being closed.
+
+                //Get raspeberryPi mac address
+                FileLogger.Log(LogType.Information, "Application Started...");
+                _myRaspberryMacAddress = Utility.GetMacAddress();//await GetMAC();
+
                 _deferral = taskInstance.GetDeferral();
                 var restRouteHandler = new RestRouteHandler();
 
@@ -63,12 +68,13 @@ namespace HomeListner
 
                 await httpServer.StartServerAsync();
 
-                DBLogger.Log(LogType.Information, "ServerStarted");
+                //DBLogger.Log(LogType.Information, "ServerStarted");
 
                 //var startTimeSpan = TimeSpan.Zero;
                 //var periodTimeSpan = TimeSpan.FromMinutes(1);
-                var stateTimer = new Timer(UpdateIpAsync,
-                                   null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+
+                //var stateTimer = new Timer(UpdateIpAsync, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+                startTriggerIpUpdate();
 
                 // Dont release deferral, otherwise app will stop
             }
@@ -78,6 +84,11 @@ namespace HomeListner
             }
         }
 
+        public void startTriggerIpUpdate()
+        {
+            var setTimer = new Timer(UpdateIpAsync, null, 0, 30000);
+        }
+
         private async void UpdateIpAsync(object state)
         {
             //FileLogger.Log(Common.LogType.Information, "1");
@@ -85,13 +96,13 @@ namespace HomeListner
             //FileLogger.Log(Common.LogType.Information, "2");
             var device = new Device();
             //FileLogger.Log(Common.LogType.Information, "3");
-            device.MacId = await GetMAC();
+            device.MacId = _myRaspberryMacAddress;
             device.IPAddress = publicIp;
             //FileLogger.Log(Common.LogType.Information, "4");
-            FileLogger.Log(LogType.Information, "IP and MacID:" + publicIp + " / " + device.MacId);
+            //FileLogger.Log(LogType.Information, "IP and MacID:" + publicIp + " / " + device.MacId);
 
             // Update port # in the following line.
-            client.BaseAddress = new Uri("http://ajaytestingsite.somee.com/");
+            client.BaseAddress = new Uri("http://www.AutoHome.somee.com/");
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
@@ -159,7 +170,7 @@ namespace HomeListner
             try
             {
                 wrGETURL = (HttpWebRequest)WebRequest.Create(URL);
-                wrGETURL.Credentials = new NetworkCredential("Administrator", "123");
+                wrGETURL.Credentials = new NetworkCredential("Administrator", "123456");
                 HttpWebResponse Response = (HttpWebResponse)(await wrGETURL.GetResponseAsync());
                 if (Response.StatusCode == HttpStatusCode.OK)
                 {
@@ -172,6 +183,26 @@ namespace HomeListner
                 System.Diagnostics.Debug.WriteLine("GetData " + e.Message);
             }
             return objReader;
+        }
+
+        private static IBackgroundTaskRegistration Register()
+        {
+            // get the entry point of the task. I'm reusing this as the task name in order to get an unique name
+            var taskEntryPoint = typeof(StartupTask).FullName;
+            var taskName = taskEntryPoint;
+
+            // if the task is already registered, there is no need to register it again
+            var registration = BackgroundTaskRegistration.AllTasks.Select(x => x.Value).FirstOrDefault(x => x.Name == taskName);
+            if (registration != null) return registration;
+
+            // register the task to run every 30 minutes if an internet connection is available
+            var taskBuilder = new BackgroundTaskBuilder();
+            taskBuilder.Name = taskName;
+            taskBuilder.TaskEntryPoint = taskEntryPoint;
+            taskBuilder.SetTrigger(new TimeTrigger(1, false));
+            taskBuilder.AddCondition(new SystemCondition(SystemConditionType.InternetAvailable));
+
+            return taskBuilder.Register();
         }
     }
 }
